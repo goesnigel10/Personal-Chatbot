@@ -1,5 +1,6 @@
 import random
 import re
+from datetime import datetime
 
 
 class JarvisBot:
@@ -9,7 +10,6 @@ class JarvisBot:
     """
 
     def __init__(self):
-        # Intent-based patterns
         self.intents = [
             {
                 "name": "greeting",
@@ -38,23 +38,11 @@ class JarvisBot:
             },
             {
                 "name": "math",
-                "pattern": re.compile(
-                    r'\b(math|solve.*problem)\b'
-                ),
-                "responses": [
-                    "I can't solve math problems yet, but I will soon!",
-                    "Math support is coming in a future update."
-                ]
+                "pattern": re.compile(r'\b\d+\s*[\+\-\*/]\s*\d+\b')
             },
             {
                 "name": "time",
-                "pattern": re.compile(
-                    r'\b(time|what.*time)\b'
-                ),
-                "responses": [
-                    "I can't tell the time yet, but I'll learn soon!",
-                    "Time awareness isn't enabled yet."
-                ]
+                "pattern": re.compile(r'\b(time|what.*time)\b')
             }
         ]
 
@@ -65,23 +53,53 @@ class JarvisBot:
         ]
 
     def should_exit(self, user_input: str) -> bool:
-        """Check if the user wants to exit the chat"""
         return user_input in {"quit", "exit", "bye"}
 
+    def get_time(self) -> str:
+        current_time = datetime.now().strftime("%H:%M")
+        return f"The time right now is {current_time}."
+
+    def solve_math(self, user_input: str) -> str:
+        match = re.search(r'(\d+)\s*([\+\-\*/])\s*(\d+)', user_input)
+
+        if not match:
+            return "Please enter a simple math expression like '2 + 2'."
+
+        num1, operator, num2 = match.groups()
+        num1, num2 = int(num1), int(num2)
+
+        if operator == "+":
+            result = num1 + num2
+        elif operator == "-":
+            result = num1 - num2
+        elif operator == "*":
+            result = num1 * num2
+        elif operator == "/":
+            if num2 == 0:
+                return "Division by zero is not allowed."
+            result = num1 / num2
+
+        return f"The answer is {result}."
+
     def get_response(self, user_input: str) -> str:
-        """Return a response based on matching intent"""
         user_input = user_input.lower().strip()
 
         for intent in self.intents:
             if intent["pattern"].search(user_input):
+
+                if intent["name"] == "time":
+                    return self.get_time()
+
+                if intent["name"] == "math":
+                    return self.solve_math(user_input)
+
                 return random.choice(intent["responses"])
 
         return random.choice(self.default_responses)
 
     def chat(self):
-        """Main chat loop"""
         print("Jarvis: Hi! I'm Jarvis 🤖")
-        print("Jarvis: I can respond to greetings and basic questions.")
+        print("Jarvis: I can respond to greetings, time, and math.")
         print("Jarvis: Type 'quit' to exit.")
         print("-" * 40)
 
