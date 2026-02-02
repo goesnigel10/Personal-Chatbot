@@ -1,7 +1,43 @@
 import random
 import re
 from datetime import datetime
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
 
+class Brain: 
+     def __init__(self, model_name="microsoft/DialoGPT-small"):
+        print(" Loading the brain to your favourite assistant ")
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModelForCausalLM.from_pretrained(model_name)
+        self.chat_history_ids = None
+
+     def reply(self, user_input: str) -> str:
+        new_input_ids = self.tokenizer.encode(
+            user_input + self.tokenizer.eos_token,
+            return_tensors="pt"
+        )
+
+        bot_input_ids = (
+            torch.cat([self.chat_history_ids, new_input_ids], dim=-1)
+            if self.chat_history_ids is not None
+            else new_input_ids
+        )
+
+        self.chat_history_ids = self.model.generate(
+            bot_input_ids,
+            max_length=1000,
+            pad_token_id=self.tokenizer.eos_token_id,
+            do_sample=True,
+            top_p=0.95,
+            top_k=50
+        )
+
+        response = self.tokenizer.decode(
+            self.chat_history_ids[:, bot_input_ids.shape[-1]:][0],
+            skip_special_tokens=True
+        )
+
+        return response
 
 class JarvisBot:
     """
@@ -14,14 +50,16 @@ class JarvisBot:
             {
                 "name": "greeting",
                 "pattern": re.compile(
-                    r'\b(hello|hi|hey|yo|yooo|good morning|good afternoon|good evening|jarvis|jarvis i need your help|was good jarvis)\b'
+                    r'\b(hello|hi|hey|yo|yooo|good morning|good afternoon|good evening|jarvis|jarvis i need your help|was good jarvis| Who created you?| what can you do? )\b'
                 ),
                 "responses": [
-                    "Hello! Nice to meet you!",
+                    "Hello Sir ! Nice to meet you!",
                     "Hi there! How are you doing?",
                     "Hey! Great to see you!",
                     "Hello! Hope you're having a good day!",
                     "Jarvis at your assistance."
+                    "Nigel Did and he is very keem on creating something"
+                    " For now I can only respond to simple greetings and solve easy math problems I am still learning like you are "
                 ]
             },
             {
@@ -51,6 +89,8 @@ class JarvisBot:
             "I didn't quite understand that. Say hi or ask how I am!",
             "Hmm, I'm not sure how to respond to that yet."
         ]
+
+        self.llm = Brain()
 
     def should_exit(self, user_input: str) -> bool:
         return user_input in {"quit", "exit", "bye"}
@@ -95,10 +135,11 @@ class JarvisBot:
 
                 return random.choice(intent["responses"])
 
-        return random.choice(self.default_responses)
+        return self.llm.reply(user_input)
+
 
     def chat(self):
-        print("Jarvis: Hi! I'm Jarvis 🤖")
+        print("Jarvis: Hi! I'm Jarvis. Created by BIZZLE who believes in fairness and goodwill")
         print("Jarvis: I can respond to greetings, time, and math.")
         print("Jarvis: Type 'quit' to exit.")
         print("-" * 40)
